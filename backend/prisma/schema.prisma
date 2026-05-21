@@ -1,13 +1,114 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
-// Get a free hosted Postgres database in seconds: `npx create-db`
-
 generator client {
-  provider = "prisma-client"
-  output   = "../generated/prisma"
+  provider = "prisma-client-js"
 }
 
 datasource db {
   provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id         String      @id @default(cuid())
+  name       String
+  email      String      @unique
+  password   String
+  createdAt  DateTime    @default(now())
+  updatedAt  DateTime    @updatedAt
+  workspaces Workspace[]
+  incidents  Incident[]
+  tickets    Ticket[]
+}
+
+model Workspace {
+  id          String     @id @default(cuid())
+  name        String
+  description String?
+  userId      String
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+  user        User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  incidents   Incident[]
+}
+
+model Incident {
+  id            String            @id @default(cuid())
+  title         String
+  rawLogs       String            @db.Text
+  summary       String?           @db.Text
+  rootCause     String?           @db.Text
+  severity      Severity          @default(UNKNOWN)
+  status        IncidentStatus    @default(OPEN)
+  vectorId      String?
+  workspaceId   String
+  userId        String
+  createdAt     DateTime          @default(now())
+  updatedAt     DateTime          @updatedAt
+  workspace     Workspace         @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  user          User              @relation(fields: [userId], references: [id])
+  ticket        Ticket?
+  similarTo     SimilarIncident[] @relation("BaseIncident")
+  similarFrom   SimilarIncident[] @relation("MatchedIncident")
+  conversations Conversation[]
+}
+
+model SimilarIncident {
+  id              String   @id @default(cuid())
+  incidentId      String
+  matchedId       String
+  similarityScore Float
+  createdAt       DateTime @default(now())
+  incident        Incident @relation("BaseIncident", fields: [incidentId], references: [id], onDelete: Cascade)
+  matched         Incident @relation("MatchedIncident", fields: [matchedId], references: [id], onDelete: Cascade)
+}
+
+model Ticket {
+  id          String       @id @default(cuid())
+  title       String
+  description String       @db.Text
+  priority    Priority     @default(MEDIUM)
+  status      TicketStatus @default(OPEN)
+  incidentId  String       @unique
+  userId      String
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+  incident    Incident     @relation(fields: [incidentId], references: [id], onDelete: Cascade)
+  user        User         @relation(fields: [userId], references: [id])
+}
+
+model Conversation {
+  id         String   @id @default(cuid())
+  incidentId String
+  role       String
+  content    String   @db.Text
+  createdAt  DateTime @default(now())
+  incident   Incident @relation(fields: [incidentId], references: [id], onDelete: Cascade)
+}
+
+enum Severity {
+  LOW
+  MEDIUM
+  HIGH
+  CRITICAL
+  UNKNOWN
+}
+
+enum IncidentStatus {
+  OPEN
+  INVESTIGATING
+  RESOLVED
+  CLOSED
+}
+
+enum Priority {
+  LOW
+  MEDIUM
+  HIGH
+  CRITICAL
+}
+
+enum TicketStatus {
+  OPEN
+  IN_PROGRESS
+  RESOLVED
+  CLOSED
 }
