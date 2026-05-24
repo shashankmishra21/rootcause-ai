@@ -33,8 +33,11 @@ app.get('/', (_req, res) => {
 
 app.use(errorHandler);
 
-app.use('*', (_req, res) => {
-  res.status(404).json({ success: false, error: 'Route not found' });
+app.use((_req, res) => {
+  res.status(404).json({
+    success: false,
+    error: 'Route not found',
+  });
 });
 
 app.listen(PORT, () => {
